@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Az R egyik nagy ereje a külső fejlesztőlk által szolgáltatott csomagok. Habár az R eleve egy viszonylag magas szintű programozási nyelv, (a legalacsonyabb szint amikor a processzorokat közvetlenül programozzák. Ennél magasabb szint az, amikor már egy több processzoron is használható nyelven írják a programot, viszont még az adatok memóriafoglalását, a feladatok ütemezését szabályozni kell. Az R-ben sem a processzorral, sem a memóriával nem kell közvetlenül foglalkozni.) azonban erre is egyre tovább és tovább épülnek szintek; ennek egy manifesztációja a tidyverse - például a legtöbb esetben a csomag használatának során nem segít _annyira_ sokat az adat struktúrájának ismerete, mint az alap R nyelv esetében.
 
-## Pipe-ok ?s egyt?bl?s parancsok
+## Pipe-ok és egytáblás parancsok
 
 Az adatok sosem a megfelelő állapotban érkeznek, mindig kell rajtuk tisztítani, illetve bővíteni is érdemes őket. A `pipe` segítségével recept-szerűen le tudjuk írni az adattisztítás folyamatát, így maga a kód is magyarázni tudja, mit csinál. A `pipe` jelét érdemes _utána_-ént olvasni.
 
@@ -33,24 +33,24 @@ str(europeans)
 country_data <- europeans %>%
   select(country, lifeExp, gdpPercap, pop)
 
-# Ha a várható ?lettartamra mégsincs szükség, szedjük ki azt a többi közül:
+# Ha a várható élettartamra mégsincs szükség, szedjük ki azt a többi közül:
 country_data <- country_data %>%
   select(-lifeExp)
 ```
-E két parancssal jelentősen leszűkíthetjük a felhasználandó adatok körét - ezt nagy t?bl?k eset?n min?l hamarabb ?rdemes megtenni, ?gy a sz?m?t?sok sokkal gyorsabban tudnak lefutni.
+E két parancssal jelentősen leszűkíthetjük a felhasználandó adatok körét - ezt nagy táblák esetén minél hamarabb érdemes megtenni, így a számítások sokkal gyorsabban tudnak lefutni.
 
-### M?veletek elv?gz?se t?bb csoportra
+## Műveletek elvégzése több csoportra
 
-Term?szetesen az adatokat nem csak v?gni sz?ks?ges, hanem b?v?teni is ?j v?ltoz?kkal, Ehhez a `mutate` ?s a `summarise` ad igen sz?lesk?r? t?mogat?st. El?bbi a kiindul? adattal azonos mennyis?g? adatot ad vissza, m?g ut?bbi egyetlen ?rt?kk? t?m?r?ti ?ket.
+Természetesen az adatokat nem csak vágni szükséges, hanem bővíteni is új változókkal, Ehhez a `mutate` és a `summarise` ad igen széleskörű támogatást. Előbbi a kiinduló adattal azonos mennyiségű adatot ad vissza, míg utóbbi egyetlen értékké tömöríti őket.
 
 ```{r mutate}
 
-# Sz?moljuk ki minden európai ország teljes GDP-j?t minden ?vben!
+# Számoljuk ki minden európai ország teljes GDP-jét minden évben!
 europeans <- europeans %>%
   mutate(full_gdp = pop * gdpPercap)
 plot(density(europeans$full_gdp))
 
-# Sz?moljuk ki az ?tlagos egy f?re jut?, illetve az ?sszes megtermelt javat!
+# Számoljuk ki az átlagos egy főre jutó, illetve az összes megtermelt javat!
 europeans %>%
   summarise(mean_gdp = mean(gdpPercap) / 12,
             all_gdp = sum(full_gdp))
@@ -61,15 +61,15 @@ Ezzel a m?dszerrel minden ?sszehasonl?t?shoz k?l?n t?bl?t k?ne l?trehozni. Ennek
 
 ```{r mutate2}
 
-# Sz?moljuk ki minden országnak az ?tlagos ?ves ?sszes GDP-j?t!
+# Számoljuk ki minden országnak az átlagos éves összes GDP-jét!
 eur_mn_gdp <- europeans %>%
   group_by(country) %>%
   summarise(GDP_per_year = mean(full_gdp))
 
-# Gyakran csak a legnagyobb/legisebb ?rt?kekre vagyunk k?v?ncsiak az erem?nyb?l:
+# Gyakran csak a legnagyobb/legisebb értékekre vagyunk kíváncsiak az ereményből:
 eur_mn_gdp %>% arrange(desc(GDP_per_year))
 
-# Az ?sszes?tett ?rt?ket az egyes sorokhoz is hozz??rhatjuk:
+# Az összesített értéket az egyes sorokhoz is hozzáírhatjuk:
 europeans %>%
   group_by(country) %>%
   mutate(country_mean = mean(full_gdp))
@@ -77,9 +77,9 @@ europeans %>%
 
 
 
-## Sz?les ?s hossz? adatok
+## Széles és hosszú adatok
 
-Az adatok elemi r?szelre bont?sa sosem olyan egy?rtelm? feladat, mint amilyennek l?tszik: a `gapminder` adatok eset?n egy sorban h?rom m?r?s is szerepel (v?rhat? ?letkor, egy f?re es? GDP ?s lakoss?g), ezzel jelezve, hogy e h?romnak az ?sszef?gg?se volt a legalkalmasabb a kutat?sra, amihez az adatokat gy?jt?tt?k. Azonban enn?l elemibben is elt?rolhat? az adat, ha egy sorban csak egy m?r?st t?rolunk, ez az adatok _hossz?_ form?tuma. ?gy egy m?r?s minden jellemz?je k?l?n oszlopban szerepel, ?gy az adat k?nnyen sz?rhet?.
+Az adatok elemi részekre bontása sosem olyan egyértelmű feladat, mint amilyennek látszik: a `gapminder` adatok esetén egy sorban három mérés is szerepel (várható életkor, egy főre eső GDP és lakosság), ezzel jelezve, hogy e háromnak az összefüggése volt a legalkalmasabb a kutatásra, amihez az adatokat gyűjtötték. Azonban ennél elemibben is eltárolható az adat, ha egy sorban csak egy mérést tárolunk, ez az adatok _hosszú_ formátuma. Így egy mérés minden jellemzője külön oszlopban szerepel, így az adat könnyen szűrhető.
 
 ```{r long_data}
 long_gapminder <- gapminder %>%
@@ -89,7 +89,7 @@ long_gapminder <- gapminder %>%
 str(long_gapminder)
 ```
 
-Ennek ellent?te az adatok sz?les form?tuma - ez akkor hasznos, ha szeretn?nk hogy egy kutat?si egys?get ?rjon le egy sor, ?s nem egyetlen m?r?st. Ilyenb?l indult ki az eredeti adat.
+Ennek ellentéte az adatok széles formátuma - ez akkor hasznos, ha szeretnénk hogy egy kutatási egységet írjon le egy sor, és nem egyetlen mérést. Ilyenből indult ki az eredeti adat.
 
 ```{r wide_data}
 
@@ -99,42 +99,42 @@ long_gapminder %>%
 
 ```
 
-## Adatt?bl?k kapcsol?sa
+## Adattáblák kapcsolása
 
-Az adatok t?rol?s?n?l fontos, hogy viszonylag kis helyen f?rjenek el - ?s l?thattuk, hogy mind a hossz?, mind a sz?les form?tum hordoz redund?ns inform?ci?t. Ennek megold?sa ?ltal?ban az hogy hogy t?bb t?bl?ban t?roljuk az inform?ci?t: a Gapminder adatok eset?ben lehet egy országokra vonatkoz? ?s egy m?r?sekre vonatkoz? t?bla:
+Az adatok tárolásánál fontos, hogy viszonylag kis helyen férjenek el - és láthattuk, hogy mind a hosszú, mind a széles formátum hordoz redundáns információt. Ennek megoldása általában az hogy hogy több táblában tároljuk az információt: a Gapminder adatok esetében lehet egy országokra vonatkozó és egy mérésekre vonatkozó tábla:
 
 ```{r splitting_gapminder}
 countries <- long_gapminder %>%
-  select(country, continent) %>% # országadatok kiv?laszt?sa
-  unique() %>% # egyedi országok megtart?sa
-  arrange(country) %>% # bet?rend alapj?n rendez?s
-  mutate(id = row_number((country))) # azonos?t?
+  select(country, continent) %>% # országadatok kiválasztása
+  unique() %>% # egyedi országok megtartása
+  arrange(country) %>% # betűrend alapján rendezés
+  mutate(id = row_number((country))) # azonosító
 
 gdp_data <- long_gapminder %>%
-  group_by(year, property) %>% # sz?ks?ges redund?ns inform?ci?k
+  group_by(year, property) %>% # szükséges redundáns információk
   mutate(country_id = country %>%                      # ország oszlop
-                      unique %>%                       # egyedi ?rt?kek
-                      rank(ties.method = "first")) %>% # sorsz?mad?s
-  select(country_id, year, property, value) %>% # megtartani k?v?nt inform?ci?k
-  spread(property, value) %>% # megfigyel?sek v?ltoz?nk?nt val? sz?tszed?se
-  ungroup() # group_by hat?stalan?t?sa
+                      unique %>%                       # egyedi értékek
+                      rank(ties.method = "first")) %>% # sorszámasás
+  select(country_id, year, property, value) %>% # megtartani kívánt információk
+  spread(property, value) %>% # megfigyelések változónként való szétszedése
+  ungroup() # group_by hatástalanítása
 ```
 
-Ilyesmi t?blamegoszt?s lehet p?ld?ul a egy kohorsz kutat?sban a demogr?fiai adatok ?s az egyes k?rd??vekre adott v?laszok t?bl?i, de ilyen p?ld?ul b?rmelyik weboldal felhaszn?l?i adatokat ?s felhaszn?l?i aktivit?sokat t?rol? adatb?zisa is. Hab?r ezek a t?rol?s szempontj?b?l ?rtelmes d?nt?sek, a feldolgoz?st megnehez?ti.
+Ilyesmi táblamegosztás lehet például a egy kohorsz kutatásban a demográfiai adatok és az egyes kérdőívekre adott válaszok táblái, de ilyen például bármelyik weboldal felhasználói adatokat és felhasználói aktivitásokat tároló adatbázisa is. Habár ezek a tárolás szempontjából értelmes döntések, a feldolgozást megnehezíti.
 
-Két különböző tábla összekapcsolása az `SQL`-t ismerőknek _join_, az adatos körökben sokan ismerhetitek _merge_-ként. A művelet lényege, hogy két különböző t?bl?b?l ?sszerakja eg t?bl?ba az oszlopokat, azonban a megfelel? sorok ?ssze legyenek p?ros?tva egy (vagy t?bb) azonos?t? alapj?n. H?rom alapvet? fajt?ja l?tezik:
+Két különböző tábla összekapcsolása az `SQL`-t ismerőknek _join_, az adatos körökben sokan ismerhetitek _merge_-ként. A művelet lényege, hogy két különböző táblából összerakja eg táblába az oszlopokat, azonban a megfelelő sorok össze legyenek párosítva egy (vagy több) azonosító alapján. Három alapvető fajtája létezik:
 
- - inner join: csak a mindk?t adatt?bl?ban szerepl? rekordokat szerepelteti az eredm?nyben. Minden ism?tl?d? ?rt?ket felt?ntet.
+ - inner join: csak a mindkét adattáblában szereplő rekordokat szerepelteti az eredm?nyben. Minden ismétlődő értéket feltüntet.
  ![Inner join Venn diagrammon](pictures/inner_join.gif)
- - left / right join: az egyik adatt?bl?b?l minden ?rt?khez keres ?rt?ket a m?sik t?bl?ban. Ha nincs hozz? tartoz? ?rt?k, NA az eredm?ny.
+ - left / right join: az egyik adattáblából minden értékhez keres értéket a másik táblában. Ha nincs hozzá tartozó érték, NA az eredmény.
  ![Left join Venn diagrammon](pictures/left_join.gif)
- - full join: mindk?t t?bla minden sor?t megtartja, amihez nem tal?l p?rt, NA-val t?lti fel.
+ - full join: mindkét tábla minden sorát megtartja, amihez nem talál párt, NA-val tölti fel.
  ![full join Venn diagrammon](pictures/full_join.jpg)
-L?tezik k?t m?sik `join` m?velet is a `dplyr` vil?g?ban: a _semi_ ?s _anti_ join. El?bbi az egyik t?bl?b?l megtartja, a m?sik eldobja azokat a sorokat, amik benne vannak a m?sik t?bl?ban, viszont a m?sik t?bla oszlopait nem ?rja hozz? az els?h?z. E k?t m?velet a `filter` f?ggv?nnyel is megoldhat? volna, azonban ?gy sokkal hat?konyabb (gyorsabb ?s kevesebb mem?ri?t haszn?l)
+Létezik két másik `join` művelet is a `dplyr` világában: a _semi_ és _anti_ join. Előbbi az egyik táblából megtartja, a másik eldobja azokat a sorokat, amik benne vannak a másik táblában, viszont a másik tábla oszlopait nem ?rja hozzá az els?h?z. E két művelet a `filter` függvénnyel is megoldható volna, azonban így sokkal hatékonyabb (gyorsabb és kevesebb mem?riát használ)
 
 ```{r joins}
 
-# v?lasszuk ki a 100-n?l kisebb id-val rendelkez? m?r?seket, illetve az európai országokat:
+# válasszuk ki a 100-nál kisebb id-val rendelkező méréseket, illetve az európai országokat:
 country_europe <- countries %>%
   filter(continent == "Europe")
 
