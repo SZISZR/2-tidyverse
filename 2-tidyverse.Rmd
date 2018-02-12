@@ -1,0 +1,169 @@
+---
+title: "Tidyverse"
+author: "Tajti András - Tóth Tímea"
+date: '2018 február 11 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Az R egyik nagy ereje a külső fejlesztőlk által szolgáltatott csomagok. Habár az R eleve egy viszonylag magas szintű programozási nyelv, (a legalacsonyabb szint amikor a processzorokat közvetlenül programozzák. Ennél magasabb szint az, amikor már egy több processzoron is használható nyelven írják a programot, viszont még az adatok memóriafoglalását, a feladatok ütemezését szabályozni kell. Az R-ben sem a processzorral, sem a memóriával nem kell közvetlenül foglalkozni.) azonban erre is egyre tovább és tovább épülnek szintek; ennek egy manifesztációja a tidyverse - például a legtöbb esetben a csomag használatának során nem segít _annyira_ sokat az adat struktúrájának ismerete, mint az alap R nyelv esetében.
+
+## Pipe-ok és egytáblás parancsok
+
+Az adatok sosem a megfelelő állapotban érkeznek, mindig kell rajtuk tisztítani, illetve bővíteni is érdemes őket. A `pipe` segítségével recept-szerűen le tudjuk írni az adattisztítás folyamatát, így maga a kód is magyarázni tudja, mit csinál. A `pipe` jelét érdemes _utána_-ént olvasni.
+
+```{r pipes_filter_select}
+library(tidyverse)
+library(gapminder)
+data(gapminder)
+
+# Milyen adatok vannak a táblában?
+str(gapminder)
+
+# V?lasszuk ki az európai országokat!
+europeans <- gapminder %>%
+  filter(continent == "Europe")
+str(europeans)
+
+# válasszuk ki ország, várható élettertam, egy főre eső GDP és a népességszám oszlopokat!
+
+country_data <- europeans %>%
+  select(country, lifeExp, gdpPercap, pop)
+
+# Ha a várható élettartamra mégsincs szükség, szedjük ki azt a többi közül:
+country_data <- country_data %>%
+  select(-lifeExp)
+```
+E két parancssal jelentősen leszűkíthetjük a felhasználandó adatok körét - ezt nagy táblák esetén minél hamarabb érdemes megtenni, így a számítások sokkal gyorsabban tudnak lefutni.
+
+## Műveletek elvégzése több csoportra
+
+Természetesen az adatokat nem csak vágni szükséges, hanem bővíteni is új változókkal, Ehhez a `mutate` és a `summarise` ad igen széleskörű támogatást. Előbbi a kiinduló adattal azonos mennyiségű adatot ad vissza, míg utóbbi egyetlen értékké tömöríti őket.
+
+```{r mutate}
+
+# Számoljuk ki minden európai ország teljes GDP-jét minden évben!
+europeans <- europeans %>%
+  mutate(full_gdp = pop * gdpPercap)
+plot(density(europeans$full_gdp))
+
+# Számoljuk ki az átlagos egy főre jutó, illetve az összes megtermelt javat!
+europeans %>%
+  summarise(mean_gdp = mean(gdpPercap) / 12,
+            all_gdp = sum(full_gdp))
+```
+
+
+Ezzel a m?dszerrel minden ?sszehasonl?t?shoz k?l?n t?bl?t k?ne l?trehozni. Ennek elker?l?s?re ?sz?lt a `group_by` f?ggv?nyt, ami a h?tt?rben megjegyzi, milyen v?ltoz?k szerint szeretn?nk elv?gezni egy-egy ?sszes?t?st.
+
+```{r mutate2}
+
+# Számoljuk ki minden országnak az átlagos éves összes GDP-jét!
+eur_mn_gdp <- europeans %>%
+  group_by(country) %>%
+  summarise(GDP_per_year = mean(full_gdp))
+
+# Gyakran csak a legnagyobb/legisebb értékekre vagyunk kíváncsiak az ereményből:
+eur_mn_gdp %>% arrange(desc(GDP_per_year))
+
+# Az összesített értéket az egyes sorokhoz is hozzáírhatjuk:
+europeans %>%
+  group_by(country) %>%
+  mutate(country_mean = mean(full_gdp))
+```
+
+
+
+## Széles és hosszú adatok
+
+Az adatok elemi részekre bontása sosem olyan egyértelmű feladat, mint amilyennek látszik: a `gapminder` adatok esetén egy sorban három mérés is szerepel (várható életkor, egy főre eső GDP és lakosság), ezzel jelezve, hogy e háromnak az összefüggése volt a legalkalmasabb a kutatásra, amihez az adatokat gyűjtötték. Azonban ennél elemibben is eltárolható az adat, ha egy sorban csak egy mérést tárolunk, ez az adatok _hosszú_ formátuma. Így egy mérés minden jellemzője külön oszlopban szerepel, így az adat könnyen szűrhető.
+
+```{r long_data}
+long_gapminder <- gapminder %>%
+  gather(key = property,
+         value = value,
+         -continent, -country, -year)
+str(long_gapminder)
+```
+
+Ennek ellentéte az adatok széles formátuma - ez akkor hasznos, ha szeretnénk hogy egy kutatási egységet írjon le egy sor, és nem egyetlen mérést. Ilyenből indult ki az eredeti adat.
+
+```{r wide_data}
+
+# ?ll?tsuk el? az eredeti ?llapotot
+long_gapminder %>%
+  spread(property, value)
+
+```
+
+## Adattáblák kapcsolása
+
+Az adatok tárolásánál fontos, hogy viszonylag kis helyen férjenek el - és láthattuk, hogy mind a hosszú, mind a széles formátum hordoz redundáns információt. Ennek megoldása általában az hogy hogy több táblában tároljuk az információt: a Gapminder adatok esetében lehet egy országokra vonatkozó és egy mérésekre vonatkozó tábla:
+
+```{r splitting_gapminder}
+countries <- long_gapminder %>%
+  select(country, continent) %>% # országadatok kiválasztása
+  unique() %>% # egyedi országok megtartása
+  arrange(country) %>% # betűrend alapján rendezés
+  mutate(id = row_number((country))) # azonosító
+
+gdp_data <- long_gapminder %>%
+  group_by(year, property) %>% # szükséges redundáns információk
+  mutate(country_id = country %>%                      # ország oszlop
+                      unique %>%                       # egyedi értékek
+                      rank(ties.method = "first")) %>% # sorszámasás
+  select(country_id, year, property, value) %>% # megtartani kívánt információk
+  spread(property, value) %>% # megfigyelések változónként való szétszedése
+  ungroup() # group_by hatástalanítása
+```
+
+Ilyesmi táblamegosztás lehet például a egy kohorsz kutatásban a demográfiai adatok és az egyes kérdőívekre adott válaszok táblái, de ilyen például bármelyik weboldal felhasználói adatokat és felhasználói aktivitásokat tároló adatbázisa is. Habár ezek a tárolás szempontjából értelmes döntések, a feldolgozást megnehezíti.
+
+Két különböző tábla összekapcsolása az `SQL`-t ismerőknek _join_, az adatos körökben sokan ismerhetitek _merge_-ként. A művelet lényege, hogy két különböző táblából összerakja eg táblába az oszlopokat, azonban a megfelelő sorok össze legyenek párosítva egy (vagy több) azonosító alapján. Három alapvető fajtája létezik:
+
+ - inner join: csak a mindkét adattáblában szereplő rekordokat szerepelteti az eredm?nyben. Minden ismétlődő értéket feltüntet.
+ ![Inner join Venn diagrammon](pictures/inner_join.gif)
+ - left / right join: az egyik adattáblából minden értékhez keres értéket a másik táblában. Ha nincs hozzá tartozó érték, NA az eredmény.
+ ![Left join Venn diagrammon](pictures/left_join.gif)
+ - full join: mindkét tábla minden sorát megtartja, amihez nem talál párt, NA-val tölti fel.
+ ![full join Venn diagrammon](pictures/full_join.jpg)
+Létezik két másik `join` művelet is a `dplyr` világában: a _semi_ és _anti_ join. Előbbi az egyik táblából megtartja, a másik eldobja azokat a sorokat, amik benne vannak a másik táblában, viszont a másik tábla oszlopait nem ?rja hozzá az els?h?z. E két művelet a `filter` függvénnyel is megoldható volna, azonban így sokkal hatékonyabb (gyorsabb és kevesebb mem?riát használ)
+
+```{r joins}
+
+# válasszuk ki a 100-nál kisebb id-val rendelkező méréseket, illetve az európai országokat:
+country_europe <- countries %>%
+  filter(continent == "Europe")
+
+gdp_smaller_100 <- gdp_data %>%
+  filter(country_id < 100)
+
+# csak párosítsuk össze azokat, amelyik országok mindkét táblázatban szerepelnek:
+inner <- country_europe %>%
+  inner_join(gdp_smaller_100,
+             by = c("id" = "country_id"))
+inner %>%
+  summarise(n_distinct(country))
+str(inner)
+
+
+# párosítsuk minden országhoz gdp adatot, ha van
+left <- country_europe %>%
+  left_join(gdp_smaller_100,
+             by = c("id" = "country_id"))
+left %>% summarize_all(function(x){
+                         mean(is.na(x))
+                       })
+left %>% summarize_all( ~ mean(is.na(.)))
+str(left)
+
+# Minden ismert országnevet és minden ismert adatot párosítsunk össze!
+full <- country_europe %>%
+  full_join(gdp_smaller_100,
+             by = c("id" = "country_id"))
+full %>% summarize_all( ~ mean(is.na(.)))
+str(full)
+```
